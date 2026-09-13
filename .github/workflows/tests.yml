@@ -1,0 +1,78 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    name: Lint & static analysis
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup package
+        uses: ./.github/actions/setup-package
+
+      - name: Lint (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (PHPStan)
+        run: |
+          vendor/bin/phpstan analyse --no-progress
+          vendor/bin/phpstan analyse -c phpstan-tests.neon.dist --no-progress
+
+      - name: Refactoring rules (Rector)
+        run: vendor/bin/rector process --dry-run
+
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: use_lock_test
+          POSTGRES_USER: use_lock
+          POSTGRES_PASSWORD: use_lock
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U use_lock -d use_lock_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: use_lock_test
+      DB_USERNAME: use_lock
+      DB_PASSWORD: use_lock
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.5']
+        testbench: ['11.*']
+        stability: [prefer-stable, prefer-lowest]
+
+    name: PHP ${{ matrix.php }} - Testbench ${{ matrix.testbench }} - ${{ matrix.stability }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Advisory blocking stays ON (Composer's default): a consumer with
+      # default settings cannot install advisory-affected versions either, so
+      # the lowest cells test the lowest set that is actually installable.
+      - name: Setup package
+        uses: ./.github/actions/setup-package
+        with:
+          php-version: ${{ matrix.php }}
+          testbench: ${{ matrix.testbench }}
+          dependency-versions: ${{ matrix.stability == 'prefer-lowest' && 'lowest' || 'highest' }}
+
+      - name: Tests (Pest)
+        run: vendor/bin/pest --parallel

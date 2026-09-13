@@ -1,0 +1,39 @@
+name: Setup package
+description: >-
+  PHP + Composer setup for the package: setup-php, optional testbench
+  constraint, and a cached dependency install via ramsey/composer-install.
+
+inputs:
+  php-version:
+    description: PHP version for setup-php
+    required: false
+    default: '8.5'
+  dependency-versions:
+    description: ramsey/composer-install dependency-versions (highest or lowest)
+    required: false
+    default: highest
+  testbench:
+    description: Optional orchestra/testbench constraint (e.g. 11.*)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: gmp, bcmath, openssl, mbstring, dom, curl, json, pdo_pgsql
+        coverage: none
+
+    - name: Constrain testbench
+      if: inputs.testbench != ''
+      shell: bash
+      run: composer require "orchestra/testbench:${{ inputs.testbench }}" --no-update --no-interaction
+
+    - name: Install dependencies
+      uses: ramsey/composer-install@v3
+      with:
+        dependency-versions: ${{ inputs.dependency-versions }}
+        composer-options: --prefer-dist

@@ -1,0 +1,70 @@
+#!/bin/sh
+# Fast static gate, scoped to what the push actually changes. Mirrors the local
+# Verification routine in .ai/guidelines/development.md.
+# Bypass with `git push --no-verify` (emergencies only — never push on red).
+#
+# Only Pint and PHPStan run here — the full Pest suite and Rector are left to CI (and to
+# running explicitly, e.g. `composer test`/`composer check`) because a full local test run
+# on every push is too slow for a pre-push hook. Any push whose diff base cannot be resolved
+# fails toward running the gate. CI always runs everything, so a scoped skip here is never
+# the last line of defense.
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+gate_required=""
+have_update=""
+changed_files=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_sha" in
+        *[!0]*) ;;
+        *) continue ;;
+    esac
+    have_update=1
+    [ -n "$gate_required" ] && continue
+    case "$remote_sha" in
+        *[!0]*) base="$remote_sha" ;;
+        *) base="$(git merge-base origin/main "$local_sha" 2>/dev/null)" || base="" ;;
+    esac
+    if [ -z "$base" ]; then
+        gate_required=1
+        continue
+    fi
+    if files="$(git diff --name-only "$base" "$local_sha" 2>/dev/null)"; then
+        changed_files="$changed_files$files
+"
+    else
+        gate_required=1
+    fi
+done
+
+if [ -z "$have_update" ]; then
+    echo "✓ pre-push: deletions only, nothing to verify"
+    exit 0
+fi
+
+php_gate=""
+
+if [ -n "$gate_required" ]; then
+    php_gate=1
+else
+    IFS='
+'
+    for f in $changed_files; do
+        case "$f" in
+            *.php | *composer.json | phpstan*.neon* | pint.json | rector.php) php_gate=1 ;;
+        esac
+    done
+    unset IFS
+fi
+
+if [ -z "$php_gate" ]; then
+    echo "✓ pre-push: no PHP changes, skipping gate"
+    exit 0
+fi
+
+echo "▶ pre-push: PHP gate (pint + phpstan)"
+vendor/bin/pint --parallel --test && vendor/bin/phpstan analyse && vendor/bin/phpstan analyse -c phpstan-tests.neon.dist || exit 1
+
+echo "✓ pre-push gate passed"

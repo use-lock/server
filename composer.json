@@ -1,0 +1,140 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "use-lock/server",
+    "description": "OpenID Connect provider and authentication UI for Laravel",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "oidc",
+        "openid-connect",
+        "oauth2",
+        "oauth2-server",
+        "auth-ui"
+    ],
+    "authors": [
+        {
+            "name": "Manuel Christlieb",
+            "email": "manuel@christlieb.eu"
+        }
+    ],
+    "require": {
+        "php": "^8.5",
+        "ext-sodium": "*",
+        "bacon/bacon-qr-code": "^3.1",
+        "illuminate/auth": "^13.0",
+        "illuminate/bus": "^13.0",
+        "illuminate/console": "^13.0",
+        "illuminate/contracts": "^13.0",
+        "illuminate/cookie": "^13.0",
+        "illuminate/database": "^13.0",
+        "illuminate/http": "^13.0",
+        "illuminate/queue": "^13.0",
+        "illuminate/session": "^13.0",
+        "illuminate/support": "^13.0",
+        "illuminate/validation": "^13.0",
+        "illuminate/view": "^13.0",
+        "laravel/passkeys": "^0.2.1",
+        "lattice-php/lattice": ">=0.77 <1.0",
+        "lcobucci/clock": "^3.2",
+        "lcobucci/jwt": "^5.0",
+        "phpseclib/phpseclib": "^3.0.15",
+        "pragmarx/google2fa": "^9.0"
+    },
+    "require-dev": {
+        "bambamboole/extended-testbench": "^0.6.1",
+        "larastan/larastan": "^3.0",
+        "laravel/boost": "^2.6",
+        "laravel/pint": "^1.16",
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-laravel": "^5.0",
+        "pestphp/pest-plugin-phpstan": "^5.0",
+        "rector/rector": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Lock\\Server\\Database\\Factories\\": "database/factories/",
+            "Lock\\Server\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Lock\\Server\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Factories\\": "workbench/database/factories/"
+        }
+    },
+    "homepage": "https://github.com/use-lock/server",
+    "support": {
+        "issues": "https://github.com/use-lock/server/issues",
+        "source": "https://github.com/use-lock/server"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Lock\\Server\\OidcServiceProvider"
+            ]
+        },
+        "lattice": {
+            "discover": [
+                "src/Authentication/Ui",
+                "src/Credentials/Ui",
+                "src/Consents/Ui",
+                "src/Protocol/Ui",
+                "src/Shared/Ui"
+            ],
+            "plugin": "resources/js/plugin.ts",
+            "icons": "resources/icons"
+        }
+    },
+    "scripts": {
+        "analyse": "./vendor/bin/phpstan analyse && ./vendor/bin/phpstan analyse -c phpstan-tests.neon.dist",
+        "check": [
+            "@test:lint",
+            "@analyse",
+            "@rector:test",
+            "@test:parallel"
+        ],
+        "lint:fix": "./vendor/bin/pint",
+        "test:lint": "./vendor/bin/pint --test",
+        "rector": "./vendor/bin/rector process",
+        "rector:test": "./vendor/bin/rector process --dry-run",
+        "fix": [
+            "@rector",
+            "@lint:fix"
+        ],
+        "test": "./vendor/bin/pest",
+        "test:unit": "@test --testsuite=Unit",
+        "test:feature": "@test --testsuite=Feature",
+        "test:parallel": "./vendor/bin/pest --parallel",
+        "post-autoload-dump": [
+            "@clear",
+            "@prepare"
+        ],
+        "post-install-cmd": [
+            "@hooks:install"
+        ],
+        "post-update-cmd": [
+            "@hooks:install"
+        ],
+        "hooks:install": "git config core.hooksPath .githooks 2>/dev/null || true",
+        "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "boost:refresh": "@php vendor/bin/testbench boost:update --no-interaction",
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan serve --ansi"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

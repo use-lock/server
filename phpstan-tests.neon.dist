@@ -1,0 +1,40 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+
+parameters:
+    tmpDir: %currentWorkingDirectory%/.phpstan-cache/tests
+    paths:
+        - tests
+        - workbench/app
+        - workbench/database
+    level: 6
+    ignoreErrors:
+        # The realm-routing markers are composed through Pest's file-level uses(), which PHPStan's
+        # static trait-usage scanner cannot see — the same reason the sources config exempts the
+        # traits consumers compose in their own suites.
+        -
+            identifier: trait.unused
+            paths:
+                - tests/Support/Realms/RoutesRealmsByPath.php
+                - tests/Support/Realms/RoutesRealmsByDomain.php
+        # pest-plugin-phpstan types `$this` from the file-local uses(InteractsWithOidc::class) calls, but a trait
+        # method declared `: static` comes back typed as the bare trait, so the next call in a chain such as
+        # `$this->actingAsIdentity($user)->get(...)` is reported against an "unknown class". The trait methods are
+        # exercised at runtime by the same tests.
+        -
+            identifier: class.notFound
+            message: '#on an unknown class Lock\\Server\\Support\\Testing\\InteractsWithOidc#'
+            paths:
+                - tests/*
+        # The plugin only types `$this`. The `FeatureTestCase $test` helper parameters in these files receive the
+        # trait-composed test case at runtime, which PHPStan cannot see; a `FeatureTestCase&InteractsWithOidc` PHPDoc is
+        # rejected as an unresolvable type because traits are not types.
+        -
+            identifier: method.notFound
+            message: '#Call to an undefined method Lock\\Server\\Tests\\FeatureTestCase::(actingAsIdentity|authorizeAndApprove)\(\)#'
+            paths:
+                - tests/Feature/Consents/ConsentRepositoryTest.php
+                - tests/Feature/Flow/AuthorizationCodeFlowTest.php
+                - tests/Feature/Flow/RefreshTokenFlowTest.php
+                - tests/Feature/Protocol/TokenEndpointTest.php

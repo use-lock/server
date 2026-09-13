@@ -1,0 +1,17 @@
+laravel: '@testbench'
+
+providers:
+  - Laravel\Passkeys\PasskeysServiceProvider
+  - Lattice\LatticeServiceProvider
+  - Lock\Server\OidcServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
+
+workbench:
+  welcome: false
+  discovers:
+    web: false
+    api: false
+    commands: false
+    components: false
+    views: false
+    factories: true

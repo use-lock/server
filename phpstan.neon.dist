@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+
+parameters:
+    tmpDir: %currentWorkingDirectory%/.phpstan-cache/main
+    paths:
+        - src
+        - database/factories
+    level: 6
+    ignoreErrors:
+        -
+            # This config analyses the package sources only. Traits that ship for consumers (Testing\InteractsWithOidc,
+            # Testing\FakesAuthViews) or are consumed by the workbench user model (analysed separately by
+            # phpstan-tests.neon.dist) appear unused here.
+            identifier: trait.unused
+            reportUnmatched: false
