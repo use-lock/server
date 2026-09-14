@@ -20,6 +20,11 @@ class LogoutTokenBuilder
 
     public function build(OidcSession $session, string $clientId): string
     {
+        return $this->buildFor($session->id, $session->user_id, $clientId);
+    }
+
+    public function buildFor(string $sid, string $userId, string $clientId): string
+    {
         $now = new DateTimeImmutable;
 
         $builder = $this->keyring->builder()
@@ -29,8 +34,8 @@ class LogoutTokenBuilder
             ->identifiedBy(bin2hex(random_bytes(16)))
             ->issuedAt($now)
             ->expiresAt($now->modify('+120 seconds'))
-            ->relatedTo($session->user_id)
-            ->withClaim('sid', $session->id)
+            ->relatedTo($userId)
+            ->withClaim('sid', $sid)
             ->withClaim('events', (object) [self::EVENT => (object) []]);
 
         return $this->keyring->sign($builder);

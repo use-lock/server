@@ -60,14 +60,18 @@ class OidcSession extends Model
 
     public function logoutRetryExpired(): bool
     {
+        return $this->logoutRetryDeadline()?->isPast() ?? false;
+    }
+
+    public function logoutRetryDeadline(): ?CarbonInterface
+    {
         $endedAt = $this->revoked_at;
 
         if ($endedAt === null || ($this->expires_at !== null && $this->expires_at->lessThan($endedAt))) {
             $endedAt = $this->expires_at;
         }
 
-        return $endedAt !== null
-            && $endedAt->copy()->addSeconds(max(0, (int) config('oidc.session.logout_retry_lifetime', 86400)))->isPast();
+        return $endedAt?->copy()->addSeconds(max(0, (int) config('oidc.session.logout_retry_lifetime', 86400)));
     }
 
     /** @return Builder<static> */

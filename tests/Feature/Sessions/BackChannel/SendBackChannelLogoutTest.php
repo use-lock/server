@@ -5,12 +5,14 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Lcobucci\JWT\Token\Plain;
 use Lock\Server\Clients\Models\Client;
 use Lock\Server\Sessions\BackChannel\SendBackChannelLogout;
 use Lock\Server\Sessions\Models\OidcSession;
 use Lock\Server\Sessions\Models\SessionParticipant;
+use Lock\Server\Sessions\OidcSessionRepository;
 use Lock\Server\Shared\Context\OidcContext;
 use Lock\Server\Shared\Http\DnsResolver;
 use Lock\Server\Shared\Realms\CurrentRealm;
@@ -186,3 +188,37 @@ it('rejects unsafe stored logout URLs even when registration was bypassed', func
     Http::assertNothingSent();
     expect($participant->refresh()->logout_status)->toBe('failed');
 });
+
+it('delivers a queued logout after its session was deleted only within the retry lifetime', function (bool $expired): void {
+    Bus::fake([SendBackChannelLogout::class]);
+    $this->mock(DnsResolver::class)->shouldReceive('addresses')->times($expired ? 0 : 1)->with('rp.test')->andReturn(['1.1.1.1']);
+    Http::fake();
+    $session = OidcSession::factory()->create();
+    $client = Client::factory()->create(['backchannel_logout_uri' => 'https://rp.test/bclo']);
+    SessionParticipant::factory()->inSession($session)->forClient($client)->create();
+
+    app(OidcSessionRepository::class)->revoke($session->id);
+    $job = Bus::dispatched(SendBackChannelLogout::class)->sole();
+    $session->delete();
+
+    if ($expired) {
+        $this->travel(2)->days();
+    }
+
+    app()->call([unserialize(serialize($job)), 'handle']);
+
+    Http::assertSentCount($expired ? 0 : 1);
+
+    if ($expired) {
+        return;
+    }
+
+    Http::assertSent(function (Request $request) use ($session, $client): bool {
+        $token = parseIdToken($request['logout_token']);
+
+        return $token instanceof Plain
+            && $token->claims()->get('sid') === $session->id
+            && $token->claims()->get('sub') === $session->user_id
+            && $token->claims()->get('aud') === [$client->client_id];
+    });
+})->with([false, true]);

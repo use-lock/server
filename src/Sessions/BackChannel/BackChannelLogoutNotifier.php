@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Lock\Server\Sessions\Models\OidcSession;
 use Lock\Server\Sessions\Models\SessionParticipant;
+use Lock\Server\Shared\Clients\Client;
 use Lock\Server\Shared\Clients\Clients;
 use Lock\Server\Shared\Realms\CurrentRealm;
 use Lock\Server\Shared\Sessions\SessionEnded;
@@ -50,10 +51,13 @@ class BackChannelLogoutNotifier
                     return;
                 }
 
-                DB::afterCommit(function () use ($participant, $session): void {
+                $client = $this->clients->findByKey($participant->client_id, $session->realm);
+                $delivery = $client instanceof Client ? LogoutDelivery::from($session, $client) : null;
+
+                DB::afterCommit(function () use ($participant, $session, $delivery): void {
                     try {
                         CurrentRealm::runAs($session->realm, fn () => Bus::dispatch(
-                            new SendBackChannelLogout($participant->id, $session->realm),
+                            new SendBackChannelLogout($participant->id, $session->realm, $delivery),
                         ));
                     } catch (Throwable $exception) {
                         report($exception);
