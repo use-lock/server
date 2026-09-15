@@ -52,6 +52,21 @@ class EndSessionController
         private readonly SignedJwtParser $parser,
     ) {}
 
+    /**
+     * End the browser session at a relying party's request.
+     *
+     * GET and POST accept optional `id_token_hint`, `client_id`,
+     * `post_logout_redirect_uri` and `state`. The redirect URI is honoured only
+     * when registered for the identified client. `logout_hint` and `ui_locales`
+     * are accepted but ignored. POST requests use the web middleware's CSRF
+     * protection; a confirmation form also submits `logout_confirmation`.
+     *
+     * A GET may render a logout confirmation instead of ending the session.
+     * After logout, redirect to the accepted URI with `state` when supplied,
+     * or to the realm's configured logout destination. Inertia requests use the
+     * external-redirect protocol. Invalid confirmation or conflicting client
+     * identification returns an OAuth error.
+     */
     public function __invoke(Request $request): Response
     {
         $hint = $this->validatedHint($request);

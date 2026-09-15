@@ -21,6 +21,19 @@ use Lock\Server\Shared\Tokens\AccessTokenBearer;
  */
 class UserinfoController
 {
+    /**
+     * Read claims for the authenticated end user.
+     *
+     * GET and POST require an Authorization bearer access token associated with
+     * an end user and granting the `openid` scope. Client-credentials tokens do
+     * not identify an end user. A browser session does not replace the token.
+     *
+     * Success is 200 JSON with required string `sub` and additional claims
+     * resolved from the granted scopes. Missing credentials produce a bearer
+     * challenge with HTTP 401 and an empty body. Invalid tokens return 401 with
+     * `error=invalid_token`; missing `openid` scope returns 403 with
+     * `error=insufficient_scope`. The response's `sub` must match the ID token.
+     */
     public function __invoke(Request $request, ClaimsResolver $claims): JsonResponse
     {
         $user = Auth::guard((string) config('oidc.auth.api_guard', 'oidc'))->user();
