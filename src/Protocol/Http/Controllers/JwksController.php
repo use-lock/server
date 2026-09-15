@@ -11,6 +11,14 @@ class JwksController
 {
     public function __construct(private readonly Keyring $keyring) {}
 
+    /**
+     * Read the realm's public signing keys.
+     *
+     * This public GET returns 200 JSON with a `keys` array in JSON Web Key Set
+     * format. Consumers use these keys to verify signatures on issued tokens;
+     * private key material is never returned. Responses are publicly cacheable
+     * for 3600 seconds.
+     */
     public function __invoke(): JsonResponse
     {
         return response()

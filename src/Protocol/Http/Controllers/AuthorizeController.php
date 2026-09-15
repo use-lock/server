@@ -54,6 +54,28 @@ class AuthorizeController
         private readonly RealmAudiences $audiences,
     ) {}
 
+    /**
+     * Authorize a client with the authorization code flow.
+     *
+     * Use GET query parameters or an application/x-www-form-urlencoded POST.
+     * Required parameters are `client_id`, `response_type=code`, `code_challenge`
+     * and `code_challenge_method=S256`. Supply `redirect_uri` unless the client
+     * has exactly one registered redirect URI. Optional parameters are `scope`
+     * (space-delimited), `state`, `resource`, `nonce`, `prompt`, `max_age`,
+     * `acr_values`, `id_token_hint` and `response_mode=query`.
+     *
+     * `prompt` accepts `none`, `login`, `consent` and `select_account`; `none`
+     * cannot be combined with another value. `max_age` is a non-negative number
+     * of seconds. Signed request objects and `request_uri` are unsupported.
+     *
+     * This is a browser-session endpoint: it may redirect to login or required
+     * actions, render consent, or redirect to the client with `code`, `iss` and
+     * optional `state`. After client and redirect URI validation, protocol errors
+     * are returned to that URI; an invalid client or redirect URI is never used
+     * as a redirect target. Inertia requests use the external-redirect protocol.
+     *
+     * @see AuthorizeRequestValidator
+     */
     public function __invoke(Request $request): Response|Responsable
     {
         $authRequest = $this->validator->validate($request);
