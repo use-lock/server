@@ -17,6 +17,15 @@ final readonly class TokenResponse implements Responsable
 {
     public function __construct(private TokenSet $tokens) {}
 
+    /**
+     * Return the OAuth token response as JSON.
+     *
+     * The 200 response includes string `access_token`, `token_type=Bearer` and
+     * integer `expires_in` in seconds. `scope` is a space-delimited string when
+     * non-empty; `refresh_token` and `id_token` appear only when issued. Grant
+     * extensions may add fields, such as `issued_token_type` for token exchange.
+     * Responses carry `Cache-Control: no-store` and `Pragma: no-cache`.
+     */
     public function toResponse($request): JsonResponse
     {
         $body = [

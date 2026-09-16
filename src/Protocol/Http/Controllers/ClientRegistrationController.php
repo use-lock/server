@@ -18,6 +18,25 @@ use Lock\Server\Shared\Realms\RealmResolver;
  */
 class ClientRegistrationController
 {
+    /**
+     * Register an OAuth client dynamically.
+     *
+     * Send a JSON object with a non-empty `redirect_uris` array. The default
+     * registration handler also accepts `client_name`, `post_logout_redirect_uris`,
+     * `grant_types`, `response_types`, `token_endpoint_auth_method`,
+     * `backchannel_logout_uri` and `backchannel_logout_session_required`.
+     * It supports authorization code clients with optional refresh tokens;
+     * `response_types` is `["code"]`. Authentication defaults to `none`; selecting
+     * `client_secret_basic` or `client_secret_post` issues a client secret.
+     *
+     * Success is 201 JSON with `client_id`, `client_id_issued_at` and registered
+     * metadata, plus `client_secret` and `client_secret_expires_at=0` when issued.
+     * Registration errors return 400 JSON with `error` and `error_description`.
+     * The endpoint requires no existing client credentials and returns 404 when
+     * dynamic registration is disabled for the realm.
+     *
+     * @see RegisterClient
+     */
     public function __invoke(Request $request, RegisterClient $register, RealmResolver $realms): JsonResponse
     {
         abort_unless($realms->current()->clients()->dynamicRegistration, 404);

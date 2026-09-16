@@ -16,6 +16,16 @@ use Lock\Server\Shared\Realms\RealmAudiences;
  */
 class ProtectedResourceController
 {
+    /**
+     * Discover an OAuth protected resource's metadata.
+     *
+     * This public GET returns 200 JSON with `resource`, `authorization_servers`,
+     * `scopes_supported` and `bearer_methods_supported` (header only). The optional
+     * path identifies a configured path-relative resource; an unknown resource
+     * returns 404. Responses are publicly cacheable for 3600 seconds.
+     *
+     * @param  string  $path  The resource path relative to the realm issuer.
+     */
     public function __invoke(IssuerResolver $issuer, RealmAudiences $audiences, string $path = ''): JsonResponse
     {
         $scopes = $audiences->advertisedScopes($path);
