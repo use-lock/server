@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Lock\Server\Tokens\Http\Middleware;
 
+use BackedEnum;
 use Closure;
 use Illuminate\Http\Request;
 use Lock\Server\Shared\Protocol\OAuthServerException;
@@ -16,9 +17,12 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class CheckScopes
 {
-    public static function using(string ...$scopes): string
+    public static function using(string|BackedEnum ...$scopes): string
     {
-        return static::class.':'.implode(',', $scopes);
+        return static::class.':'.implode(',', array_map(
+            static fn (string|BackedEnum $scope): string => $scope instanceof BackedEnum ? (string) $scope->value : $scope,
+            $scopes,
+        ));
     }
 
     public function handle(Request $request, Closure $next, string ...$scopes): Response

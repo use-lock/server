@@ -13,6 +13,12 @@ use Lock\Server\Clients\ClientRepository;
 use Lock\Server\Tokens\Http\Middleware\CheckAudience;
 use Workbench\App\Models\User;
 
+enum ProbeResource: string
+{
+    case Orders = 'orders';
+    case Reports = 'https://other/api';
+}
+
 const CHECK_AUDIENCE_CHALLENGE = 'Bearer realm="default", error="invalid_token", resource_metadata="http://localhost/.well-known/oauth-protected-resource"';
 
 beforeEach(function (): void {
@@ -42,6 +48,38 @@ it('passes a token addressed to the route audience and rejects one addressed els
         ->assertUnauthorized()
         ->assertJsonPath('error', 'invalid_token')
         ->assertHeader('WWW-Authenticate', CHECK_AUDIENCE_CHALLENGE);
+});
+
+it('resolves a path-relative resource, given as a string or a backed enum, under the realm issuer', function (): void {
+    config()->set('oidc.resources', ['orders' => [], 'https://other/api' => []]);
+
+    Route::middleware(['auth:oidc', CheckAudience::using('orders')])
+        ->get('/test/relative', fn (Request $request) => response()->json(['user' => $request->user()?->getAuthIdentifier()]));
+    Route::middleware(['auth:oidc', CheckAudience::using(ProbeResource::Orders)])
+        ->get('/test/enum', fn (Request $request) => response()->json(['user' => $request->user()?->getAuthIdentifier()]));
+    Route::middleware(['auth:oidc', CheckAudience::using(ProbeResource::Reports)])
+        ->get('/test/enum-absolute', fn (Request $request) => response()->json(['user' => $request->user()?->getAuthIdentifier()]));
+
+    expect(CheckAudience::using(ProbeResource::Orders, 'https://other/api'))->toBe(CheckAudience::class.':orders,https://other/api');
+
+    $orders = resourceServerBearer($this, ['http://localhost/orders']);
+    $other = resourceServerBearer($this, ['https://other/api']);
+
+    $this->getJson('/test/relative', ['Authorization' => "Bearer $orders"])->assertOk()->assertJson(['user' => $this->user->id]);
+
+    Auth::forgetGuards();
+
+    $this->getJson('/test/enum', ['Authorization' => "Bearer $orders"])->assertOk()->assertJson(['user' => $this->user->id]);
+
+    Auth::forgetGuards();
+
+    $this->getJson('/test/enum', ['Authorization' => "Bearer $other"])
+        ->assertUnauthorized()
+        ->assertJsonPath('error', 'invalid_token');
+
+    Auth::forgetGuards();
+
+    $this->getJson('/test/enum-absolute', ['Authorization' => "Bearer $other"])->assertOk()->assertJson(['user' => $this->user->id]);
 });
 
 it('rejects with invalid_token when no preceding guard populated the user', function (): void {

@@ -12,6 +12,12 @@ use Lock\Server\Clients\ClientRepository;
 use Lock\Server\Tokens\Http\Middleware\CheckScopes;
 use Workbench\App\Models\User;
 
+enum ProbeScope: string
+{
+    case OpenId = 'openid';
+    case Admin = 'admin';
+}
+
 beforeEach(function (): void {
     $this->user = User::create(['name' => 'M', 'email' => 'm@example.com', 'password' => 'x']);
     $this->client = app(ClientRepository::class)->createAuthorizationCodeGrantClient('RP', ['https://rp.test/cb']);
@@ -31,6 +37,23 @@ it('passes a token that carries the required scope and forbids one that lacks it
     Auth::forgetGuards();
 
     $this->getJson('/probe/admin', ['Authorization' => "Bearer $jwt"])->assertForbidden();
+});
+
+it('accepts backed enums as scopes', function (): void {
+    Route::middleware(['auth:oidc', CheckScopes::using(ProbeScope::OpenId)])->get('/probe/enum-openid', fn (): array => ['id' => auth()->id()]);
+    Route::middleware(['auth:oidc', CheckScopes::using(ProbeScope::OpenId, ProbeScope::Admin)])->get('/probe/enum-admin', fn (): array => ['id' => auth()->id()]);
+
+    expect(CheckScopes::using(ProbeScope::OpenId, 'profile'))->toBe(CheckScopes::class.':openid,profile');
+
+    $jwt = resourceServerBearer($this);
+
+    $this->getJson('/probe/enum-openid', ['Authorization' => "Bearer $jwt"])->assertOk();
+
+    Auth::forgetGuards();
+
+    $this->getJson('/probe/enum-admin', ['Authorization' => "Bearer $jwt"])
+        ->assertForbidden()
+        ->assertJsonPath('error', 'insufficient_scope');
 });
 
 it('checks the scopes of a machine token the same way', function (): void {

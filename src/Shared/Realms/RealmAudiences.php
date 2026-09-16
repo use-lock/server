@@ -102,7 +102,11 @@ final readonly class RealmAudiences
         return $path === '' ? $issuer : $issuer.'/'.$path;
     }
 
-    private function identifier(string $resource): string
+    /**
+     * The audience a registered resource is addressed by: an absolute
+     * identifier as is, a path-relative one under this realm's issuer.
+     */
+    public function identifier(string $resource): string
     {
         return $this->isAbsolute($resource) ? $resource : $this->protectedResource($resource);
     }
