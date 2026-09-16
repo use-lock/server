@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/use-lock/server/compare/0.1.0...0.2.0) (2026-09-16)
+
+
+### Features
+
+* accept backed enums and relative resources in the token middleware ([b20c635](https://github.com/use-lock/server/commit/b20c635e98a9d68567fe288f38a5356f35cb9f01))
+
 ## 0.1.0 (2026-09-14)
 
 
