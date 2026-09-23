@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Lock\Server\Clients;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Lock\Server\Clients\Models\Client as ClientModel;
 use Lock\Server\Shared\Clients\Client;
 use Lock\Server\Shared\Clients\ClientAuthenticationException;
@@ -13,6 +14,7 @@ use Lock\Server\Shared\Clients\Clients;
 use Lock\Server\Shared\Clients\TokenEndpointAuthMethod;
 use Lock\Server\Shared\Realms\RealmResolver;
 use RuntimeException;
+use SensitiveParameter;
 
 /**
  * `client_id` is the wire identifier; foreign keys reference the primary key.
@@ -77,19 +79,19 @@ class ClientRepository implements Clients
             ->whereNotNull('backchannel_logout_uri')->pluck('id')->all();
     }
 
-    /** @param  array<int, string>  $redirectUris */
+    /** @param  list<string>  $redirectUris */
     public function createAuthorizationCodeGrantClient(
         string $name,
         array $redirectUris,
         bool $confidential = true,
-        ?Authenticatable $user = null,
+        ?Model $owner = null,
     ): ClientModel {
         return $this->create(
             name: $name,
             grantTypes: ['authorization_code', 'refresh_token'],
             redirectUris: $redirectUris,
-            confidential: $confidential,
-            user: $user,
+            authMethod: $confidential ? TokenEndpointAuthMethod::ClientSecretPost : TokenEndpointAuthMethod::None,
+            owner: $owner,
         );
     }
 
@@ -106,21 +108,41 @@ class ClientRepository implements Clients
     }
 
     /**
-     * @param  array<int, string>  $grantTypes
-     * @param  array<int, string>  $redirectUris
+     * Creates a client in the current realm. A confidential client gets a
+     * generated secret unless one is given, e.g. to provision a client whose
+     * credentials already live in a relying party's environment.
+     *
+     * @param  list<string>  $grantTypes
+     * @param  list<string>  $redirectUris
      * @param  list<string>|null  $defaultScopes  overrides the realm's default scopes
      * @param  list<string>|null  $optionalScopes  overrides the realm's optional scopes
+     * @param  list<string>  $postLogoutRedirectUris
+     * @param  list<string>  $allowedAudiences  the resources the client may request tokens for (RFC 8707)
      */
-    protected function create(
+    public function create(
         string $name,
         array $grantTypes,
         array $redirectUris = [],
-        bool $confidential = true,
-        ?Authenticatable $user = null,
+        TokenEndpointAuthMethod $authMethod = TokenEndpointAuthMethod::ClientSecretPost,
+        ?Model $owner = null,
         ?string $clientId = null,
+        #[SensitiveParameter] ?string $secret = null,
         ?array $defaultScopes = null,
         ?array $optionalScopes = null,
+        array $postLogoutRedirectUris = [],
+        array $allowedAudiences = [],
+        ?string $backchannelLogoutUri = null,
+        bool $backchannelLogoutSessionRequired = false,
+        bool $consentRequired = true,
     ): ClientModel {
+        if ($secret !== null && ! $authMethod->requiresSecret()) {
+            throw new InvalidArgumentException('A public client cannot have a secret.');
+        }
+
+        if ($secret === '') {
+            throw new InvalidArgumentException('A client secret cannot be empty.');
+        }
+
         $settings = $this->realms->current()->clients();
         $client = new ClientModel;
         $client->setAttribute($client->getKeyName(), $client->newUniqueId());
@@ -132,17 +154,20 @@ class ClientRepository implements Clients
             'client_id' => $clientId ?? $client->getKey(),
             'name' => $name,
             'redirect_uris' => $redirectUris,
-            'post_logout_redirect_uris' => [],
+            'post_logout_redirect_uris' => $postLogoutRedirectUris,
             'grant_types' => $grantTypes,
             'default_scopes' => $defaultScopes ?? $settings->defaultScopes,
             'optional_scopes' => $optionalScopes ?? $settings->optionalScopes,
-            'token_endpoint_auth_method' => $confidential ? TokenEndpointAuthMethod::ClientSecretPost : TokenEndpointAuthMethod::None,
-            'allowed_exchange_audiences' => [],
-            'owner_type' => $user instanceof Authenticatable ? $user::class : null,
-            'owner_id' => $user?->getAuthIdentifier(),
+            'token_endpoint_auth_method' => $authMethod,
+            'allowed_exchange_audiences' => $allowedAudiences,
+            'backchannel_logout_uri' => $backchannelLogoutUri,
+            'backchannel_logout_session_required' => $backchannelLogoutSessionRequired,
+            'consent_required' => $consentRequired,
+            'owner_type' => $owner?->getMorphClass(),
+            'owner_id' => $owner?->getKey(),
         ]);
 
-        $client->secret = $confidential ? Str::random(40) : null;
+        $client->secret = $authMethod->requiresSecret() ? ($secret ?? Str::random(40)) : null;
         $client->save();
 
         return $client;
