@@ -24,7 +24,7 @@ runs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ inputs.php-version }}
-        extensions: gmp, bcmath, openssl, mbstring, dom, curl, json, pdo_pgsql
+        extensions: gmp, bcmath, openssl, mbstring, dom, curl, json, pdo_pgsql, pdo_mysql, pdo_sqlite
         coverage: none
 
     - name: Constrain testbench

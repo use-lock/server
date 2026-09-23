@@ -28,6 +28,7 @@
         <env name="DB_DATABASE" value="use_lock_test"/>
         <env name="DB_USERNAME" value="use_lock"/>
         <env name="DB_PASSWORD" value="use_lock"/>
+        <env name="DB_FOREIGN_KEYS" value="true"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
     </php>
 </phpunit>

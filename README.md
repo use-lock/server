@@ -27,7 +27,7 @@ An OpenID Connect provider and Lattice authentication UI for Laravel, shipped as
 
 - PHP `^8.5`
 - Laravel 13
-- PostgreSQL 16 with the PHP `pdo_pgsql` extension
+- PostgreSQL 16, MySQL 8.4 or SQLite, with the matching PDO extension
 - A UUID primary key on the application’s users table
 - PHP `curl` extension for back-channel logout delivery
 
@@ -119,6 +119,10 @@ before testing. Override `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and
 for parallel tests, which create databases suffixed with `_test_N`. Test runs rebuild
 the database schema; always use a dedicated test database. Stop the container with
 `docker stop use-lock-server-tests` when finished.
+
+To run the suite on another driver, set `DB_CONNECTION`, e.g. `DB_CONNECTION=sqlite
+DB_DATABASE=:memory: composer test:parallel`, or `DB_CONNECTION=mysql` with a MySQL
+test database whose user may create databases.
 
 Tests are split into two suites, with domain directories inside each suite:
 

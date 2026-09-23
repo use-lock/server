@@ -50,7 +50,6 @@ abstract class FeatureTestCase extends BaseTestCase
     protected function getEnvironmentSetUp($app): void
     {
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
-        $app['config']->set('database.default', 'pgsql');
         $app['config']->set('auth.providers.users.model', User::class);
         $app['config']->set('auth.guards.api', ['driver' => 'oidc', 'provider' => 'users']);
         $app['config']->set('session.driver', 'array');
