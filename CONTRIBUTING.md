@@ -8,6 +8,7 @@ For vulnerabilities, use the private reporting process in [SECURITY.md](SECURITY
 Use PHP 8.5, Composer, and PostgreSQL 16 with the PHP `pdo_pgsql` extension.
 Follow the [README development setup](README.md#development) to install dependencies and
 start a dedicated PostgreSQL test database. The test role needs `CREATEDB` for parallel runs.
+Set `DB_CONNECTION` to `mysql` or `sqlite` to run the suite on those drivers.
 Tests rebuild their database schema, so never point them at an application database.
 
 This repository is a Composer package developed with Orchestra Testbench. Runtime code
@@ -30,7 +31,7 @@ composer check
 
 `composer check` runs Pint, both PHPStan configurations, Rector, and the full parallel Pest
 suite. CI runs PHP 8.5 and PostgreSQL 16 with both the lowest and highest installable dependency
-versions. Keep these checks passing; do not add static-analysis suppressions to hide failures.
+versions, plus MySQL 8.4 and SQLite with the highest. Keep these checks passing; do not add static-analysis suppressions to hide failures.
 
 Use a conventional commit subject such as `fix: preserve authorization parameters`.
 Describe what changed, why, and how you verified it in the pull request. Include screenshots
