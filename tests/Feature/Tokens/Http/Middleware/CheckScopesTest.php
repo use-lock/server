@@ -9,6 +9,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Lock\Server\Clients\ClientRepository;
+use Lock\Server\Tokens\Http\Middleware\CheckAnyScope;
 use Lock\Server\Tokens\Http\Middleware\CheckScopes;
 use Workbench\App\Models\User;
 
@@ -67,6 +68,21 @@ it('checks the scopes of a machine token the same way', function (): void {
     Auth::forgetGuards();
 
     $this->getJson('/probe/admin', ['Authorization' => "Bearer $jwt"])
+        ->assertForbidden()
+        ->assertJsonPath('error', 'insufficient_scope');
+});
+
+it('passes a token that carries any one of the listed scopes', function (): void {
+    Route::middleware(['auth:oidc', CheckAnyScope::using(ProbeScope::Admin, ProbeScope::OpenId)])->get('/probe/any', fn (): array => ['id' => auth()->id()]);
+    Route::middleware(['auth:oidc', CheckAnyScope::using(ProbeScope::Admin, 'billing')])->get('/probe/none', fn (): array => ['id' => auth()->id()]);
+
+    $jwt = resourceServerBearer($this);
+
+    $this->getJson('/probe/any', ['Authorization' => "Bearer $jwt"])->assertOk();
+
+    Auth::forgetGuards();
+
+    $this->getJson('/probe/none', ['Authorization' => "Bearer $jwt"])
         ->assertForbidden()
         ->assertJsonPath('error', 'insufficient_scope');
 });
