@@ -14,6 +14,8 @@ final readonly class Scope implements Arrayable, Jsonable
         public string $id,
         public string $description = '',
         public bool $hidden = false,
+        public ?string $template = null,
+        public ?string $parameter = null,
     ) {}
 
     /** @return array{id: string, description: string} */

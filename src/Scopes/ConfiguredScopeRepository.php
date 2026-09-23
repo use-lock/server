@@ -11,7 +11,9 @@ use Lock\Server\Shared\Realms\RealmAudiences;
 use Lock\Server\Shared\Realms\RealmResolver;
 use Lock\Server\Shared\Scopes\Scope;
 use Lock\Server\Shared\Scopes\ScopeCatalog;
+use Lock\Server\Shared\Scopes\ScopeParameterPolicy;
 use Lock\Server\Shared\Scopes\ScopeRepository;
+use Lock\Server\Shared\Scopes\ScopeTemplate;
 use LogicException;
 
 class ConfiguredScopeRepository implements ScopeRepository
@@ -31,19 +33,35 @@ class ConfiguredScopeRepository implements ScopeRepository
         private readonly Application $app,
         private readonly RealmResolver $realms,
         private readonly RealmAudiences $audiences,
+        private readonly ScopeParameterPolicy $parameters = new AssignedScopeParameterPolicy,
     ) {}
 
+    /** Parameterized templates are left out: only the scopes they expand to exist. */
     public function all(array $audiences = []): Collection
     {
-        return collect($this->catalog($this->audiences->resolve($audiences)))
-            ->union(self::OIDC_SCOPES)
+        return collect($this->definitions($audiences))
+            ->reject(fn (string $description, string $id): bool => ScopeTemplate::isTemplate($id))
             ->map(fn (string $description, string $id): Scope => new Scope($id, $description))
             ->values();
     }
 
     public function find(string $identifier, array $audiences = []): ?Scope
     {
-        return $this->all($audiences)->first(fn (Scope $scope): bool => $scope->id === $identifier);
+        $scope = $this->all($audiences)->first(fn (Scope $scope): bool => $scope->id === $identifier);
+
+        if ($scope instanceof Scope) {
+            return $scope;
+        }
+
+        foreach ($this->definitions($audiences) as $template => $description) {
+            $value = ScopeTemplate::match($template, $identifier);
+
+            if ($value !== null) {
+                return new Scope($identifier, ScopeTemplate::fill($description, $value), template: $template, parameter: $value);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -89,8 +107,18 @@ class ConfiguredScopeRepository implements ScopeRepository
     {
         return array_values(array_filter(
             $requested,
-            fn (Scope $scope): bool => $this->find($scope->id, $audiences) instanceof Scope,
+            fn (Scope $scope): bool => $this->find($scope->id, $audiences) instanceof Scope
+                && ($scope->template === null || $this->parameters->allows($scope, $grantType, $client, $userIdentifier, $audiences)),
         ));
+    }
+
+    /**
+     * @param  list<string>  $audiences
+     * @return array<string, string> scope id => description
+     */
+    private function definitions(array $audiences): array
+    {
+        return $this->catalog($this->audiences->resolve($audiences)) + self::OIDC_SCOPES;
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Lock\Server\Shared\Clients;
 
+use Lock\Server\Shared\Scopes\ScopeTemplate;
+
 final readonly class Client
 {
     /**
@@ -46,8 +48,11 @@ final readonly class Client
      */
     public function allowsScope(string $scope, array $audiences = []): bool
     {
-        return in_array($scope, $this->assignedScopes($audiences), true)
-            || in_array('*', $this->optionalScopes($audiences), true);
+        $assigned = $this->assignedScopes($audiences);
+
+        return in_array($scope, $assigned, true)
+            || in_array('*', $this->optionalScopes($audiences), true)
+            || array_any($assigned, fn (string $template): bool => ScopeTemplate::match($template, $scope) !== null);
     }
 
     /**

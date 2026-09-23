@@ -99,7 +99,11 @@ return [
     // resources of the request instead and owns that split itself. Its scopes()
     // may hit the database — failures fall back to an empty catalog so key- and
     // db-less artisan runs never break; an invalid class-string fails loudly at
-    // first enumeration.
+    // first enumeration. A scope with one `{name}` placeholder, such as
+    // `organization:{organization}`, is a template: a request names a concrete
+    // value (`organization:acme`), a client assigned the template may request any
+    // value, and the bound ScopeParameterPolicy decides at issuance which values
+    // a user or client actually gets (by default, only values assigned verbatim).
     'scopes' => [],
 
     'claims_supported' => [
