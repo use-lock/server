@@ -26,6 +26,7 @@ use Lock\Server\Shared\Protocol\AuthorizeRequest;
 use Lock\Server\Shared\Protocol\OAuthServerException;
 use Lock\Server\Shared\Realms\RealmAudiences;
 use Lock\Server\Shared\Scopes\Scope;
+use Lock\Server\Shared\Scopes\ScopeParameterPolicy;
 use Lock\Server\Shared\Scopes\ScopeRepository;
 use Lock\Server\Shared\Sessions\Sessions;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,6 +53,7 @@ class AuthorizeController
         private readonly ConsentStore $consents,
         private readonly PendingActions $actions,
         private readonly RealmAudiences $audiences,
+        private readonly ScopeParameterPolicy $scopeParameters,
     ) {}
 
     public function __invoke(Request $request): Response|Responsable
@@ -106,11 +108,12 @@ class AuthorizeController
         $authRequest->userId = (string) $user->getAuthIdentifier();
 
         $resources = $this->audiences->resolve($authRequest->resources);
-        $scopes = $this->parseScopes($authRequest, $resources);
         $client = $this->clients->findActive($authRequest->clientId)
             ?? throw OAuthServerException::invalidRequest('The client is unknown.');
+        $scopes = $this->parseScopes($authRequest, $resources, $client);
 
         if ($prompt->doesntContain('consent')
+            && ! $this->requestsOpenScope($scopes)
             && (! $client->consentRequired || $this->hasGrantedScopes($user, $client, $scopes, $resources))) {
             return $this->respondToInertia($request, $this->codes->approve($authRequest, $client));
         }
@@ -147,18 +150,32 @@ class AuthorizeController
 
     /**
      * A hidden scope is granted but never shown, so it neither appears on the
-     * consent screen nor keeps a stored consent from covering the request.
+     * consent screen nor keeps a stored consent from covering the request. A
+     * parameter value the user may not have is left out rather than offered.
      *
      * @param  list<string>  $resources
      * @return list<Scope>
      */
-    protected function parseScopes(AuthorizeRequest $authRequest, array $resources): array
+    protected function parseScopes(AuthorizeRequest $authRequest, array $resources, Client $client): array
     {
         return collect($authRequest->scopes)
             ->map(fn (string $id): ?Scope => $this->scopeRepository->find($id, $resources))
             ->filter(fn (?Scope $scope): bool => $scope instanceof Scope && ! $scope->hidden)
+            ->filter(fn (Scope $scope): bool => $scope->parameter === null
+                || $this->scopeParameters->allows($scope, 'authorization_code', $client, $authRequest->userId, $resources))
             ->values()
             ->all();
+    }
+
+    /**
+     * An open template needs the user to choose its value, so it shows the
+     * consent screen even to a trusted or already consented client.
+     *
+     * @param  list<Scope>  $scopes
+     */
+    protected function requestsOpenScope(array $scopes): bool
+    {
+        return array_any($scopes, fn (Scope $scope): bool => $scope->isOpen());
     }
 
     /**

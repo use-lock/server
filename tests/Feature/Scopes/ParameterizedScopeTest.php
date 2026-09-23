@@ -35,9 +35,17 @@ it('expands a template into the concrete scope a request names', function (): vo
         ->and(app(ScopeRepository::class)->all()->pluck('id'))->not->toContain('organization:{organization}');
 });
 
-it('matches no scope for the template itself or a value outside the scope-token grammar', function (string $requested): void {
+it('resolves the template itself as an open scope that is never granted', function (): void {
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient('RP', ['https://rp.test/callback']);
+    $client->forceFill(['optional_scopes' => ['openid', 'organization:{organization}']])->save();
+
+    expect(app(ScopeRepository::class)->find('organization:{organization}')?->isOpen())->toBeTrue()
+        ->and(app(ScopeRepository::class)->grant(['openid', 'organization:{organization}'], 'authorization_code', $client->snapshot(), 'member'))->toBe(['openid']);
+});
+
+it('matches no scope for a value outside the scope-token grammar', function (string $requested): void {
     expect(app(ScopeRepository::class)->find($requested))->toBeNull();
-})->with(['organization:{organization}', 'organization:', 'organization:{acme}', 'organization:ac"me', 'organization:ac\me', 'team:acme']);
+})->with(['organization:', 'organization:{acme}', 'organization:ac"me', 'organization:ac\me', 'team:acme']);
 
 it('lets a client assigned the template request any value of it', function (): void {
     $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient('RP', ['https://rp.test/callback']);

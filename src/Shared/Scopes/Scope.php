@@ -18,6 +18,12 @@ final readonly class Scope implements Arrayable, Jsonable
         public ?string $parameter = null,
     ) {}
 
+    /** A requested template whose value the user still has to choose; it is never issued as is. */
+    public function isOpen(): bool
+    {
+        return $this->template !== null && $this->parameter === null;
+    }
+
     /** @return array{id: string, description: string} */
     public function toArray(): array
     {
