@@ -18,7 +18,7 @@ use LogicException;
 
 class ConfiguredScopeRepository implements ScopeRepository
 {
-    private const array UNBOUNDED_GRANTS = ['direct_access', 'client_credentials'];
+    private const array UNBOUNDED_GRANTS = ['client_credentials'];
 
     private const array OIDC_SCOPES = [
         'openid' => 'Authenticate with your account',

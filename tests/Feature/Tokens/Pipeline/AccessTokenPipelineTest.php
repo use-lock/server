@@ -8,11 +8,10 @@ use Lock\Server\Tokens\Pipeline\AccessTokenApi;
 use Lock\Server\Tokens\Pipeline\AccessTokenPipeline;
 use Lock\Server\Tokens\Pipeline\AuthorizationCodeEvent;
 use Lock\Server\Tokens\Pipeline\ClientCredentialsEvent;
-use Lock\Server\Tokens\Pipeline\DirectAccessTokenEvent;
 use Lock\Server\Tokens\Pipeline\TokenExchangeEvent;
 use Workbench\App\Models\User;
 
-function pipelineEvent(string $grant): ClientCredentialsEvent|TokenExchangeEvent|DirectAccessTokenEvent|AuthorizationCodeEvent
+function pipelineEvent(string $grant): ClientCredentialsEvent|TokenExchangeEvent|AuthorizationCodeEvent
 {
     $client = (new Client)->forceFill(['id' => 'client-key', 'realm' => 'default', 'client_id' => 'client-id', 'name' => 'Client', 'token_endpoint_auth_method' => TokenEndpointAuthMethod::None]);
     $user = new User(['name' => 'M', 'email' => 'm@example.com', 'password' => 'x']);
@@ -21,7 +20,6 @@ function pipelineEvent(string $grant): ClientCredentialsEvent|TokenExchangeEvent
     return match ($grant) {
         'client_credentials' => new ClientCredentialsEvent(client: $client->snapshot(), scopes: ['orders:read']),
         'token_exchange' => new TokenExchangeEvent(user: $user, client: $client->snapshot(), scopes: ['orders:read'], audience: 'https://api.internal/orders', subjectClaims: ['sub' => 'subject-id']),
-        'direct_access' => new DirectAccessTokenEvent(user: $user, client: $client->snapshot(), scopes: ['openid']),
         'authorization_code' => new AuthorizationCodeEvent(user: $user, client: $client->snapshot(), scopes: ['openid', 'email'], grantType: 'refresh_token'),
         default => throw new LogicException('Unknown grant.'),
     };
@@ -31,7 +29,7 @@ it('runs the triggers of a grant in registration order and stops after an explic
     $pipeline = new AccessTokenPipeline;
     $order = [];
 
-    $pipeline->register($grant, function (ClientCredentialsEvent|TokenExchangeEvent|DirectAccessTokenEvent|AuthorizationCodeEvent $event, AccessTokenApi $api) use (&$order): void {
+    $pipeline->register($grant, function (ClientCredentialsEvent|TokenExchangeEvent|AuthorizationCodeEvent $event, AccessTokenApi $api) use (&$order): void {
         $order[] = 'first';
         $api->setAccessTokenClaim('granted', $event->scopes);
     });
@@ -49,7 +47,7 @@ it('runs the triggers of a grant in registration order and stops after an explic
         ->and($api->accessTokenClaims())->toBe(['granted' => pipelineEvent($grant)->scopes])
         ->and($api->isDenied())->toBeTrue()
         ->and($api->denyReason())->toBe('blocked');
-})->with(['client_credentials', 'token_exchange', 'direct_access', 'authorization_code']);
+})->with(['client_credentials', 'token_exchange', 'authorization_code']);
 
 it('fails closed with a grant-specific reason and skips later triggers when one throws', function (string $grant): void {
     $pipeline = new AccessTokenPipeline;
@@ -67,7 +65,7 @@ it('fails closed with a grant-specific reason and skips later triggers when one 
     expect($api->isDenied())->toBeTrue()
         ->and($api->denyReason())->toBe($grant.'_trigger_error')
         ->and($laterTriggerRan)->toBeFalse();
-})->with(['client_credentials', 'token_exchange', 'direct_access', 'authorization_code']);
+})->with(['client_credentials', 'token_exchange', 'authorization_code']);
 
 it('runs each grant independently with its own event and seeded context', function (): void {
     $pipeline = new AccessTokenPipeline;

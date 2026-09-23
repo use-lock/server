@@ -10,7 +10,7 @@ use Lock\Server\Shared\Audit\AuditEventType;
 use Lock\Server\Shared\Audit\AuditRecord;
 use Lock\Server\Support\Testing\InteractsWithOidc;
 use Lock\Server\Tests\FeatureTestCase;
-use Lock\Server\Tokens\DirectAccessTokenIssuer;
+use Lock\Server\Tokens\Models\AccessToken;
 use Workbench\App\Models\User;
 
 uses(InteractsWithOidc::class);
@@ -166,30 +166,16 @@ it('audits a token exchange and its failure paths', function (): void {
         && $record->clientId === (string) $this->client->id);
 });
 
-it('audits direct access token issuance', function (): void {
-    $sink = fakeAudit();
-    $this->client->update(['grant_types' => ['direct_access']]);
-
-    $result = app(DirectAccessTokenIssuer::class)->issue($this->user, $this->client->snapshot(), 'cli', ['openid']);
-
-    $token = $result->token;
-
-    $sink->assertRecorded(AuditEventType::TokenIssued, fn (AuditRecord $record): bool => $record->context['grant_type'] === 'direct_access'
-        && $record->userId === (string) $this->user->id
-        && $record->context['jti'] === (string) $token->getKey());
-});
-
 it('audits an access token revocation', function (): void {
-    $this->client->update(['grant_types' => ['direct_access']]);
-    $result = app(DirectAccessTokenIssuer::class)->issue($this->user, $this->client->snapshot(), 't', ['openid']);
-    $token = $result->token;
+    $accessToken = $this->issueTokenFor($this->user, $this->client);
+    $token = AccessToken::query()->sole();
 
     $sink = fakeAudit();
 
     $this->postJson('/oauth/revoke', [
         'client_id' => $this->client->id,
         'client_secret' => $this->client->secret,
-        'token' => $result->accessToken,
+        'token' => $accessToken,
     ])->assertOk();
 
     $sink->assertRecorded(AuditEventType::TokenRevoked, fn (AuditRecord $record): bool => $record->clientId === (string) $this->client->id
