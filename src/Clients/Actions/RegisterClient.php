@@ -52,19 +52,15 @@ readonly class RegisterClient implements RegistersClients
         $this->assertResponseTypes($metadata['response_types'] ?? null);
         $backChannelLogoutUri = $this->backChannelLogoutUri($metadata['backchannel_logout_uri'] ?? null);
 
-        $client = $this->clients->createAuthorizationCodeGrantClient(
-            $this->clientName($metadata, $redirectUris),
-            $redirectUris,
-            confidential: $authMethod->requiresSecret(),
+        $client = $this->clients->create(
+            name: $this->clientName($metadata, $redirectUris),
+            grantTypes: $grantTypes,
+            redirectUris: $redirectUris,
+            authMethod: $authMethod,
+            postLogoutRedirectUris: $postLogoutRedirectUris,
+            backchannelLogoutUri: $backChannelLogoutUri,
+            backchannelLogoutSessionRequired: filter_var($metadata['backchannel_logout_session_required'] ?? false, FILTER_VALIDATE_BOOLEAN),
         );
-
-        $client->forceFill([
-            'token_endpoint_auth_method' => $authMethod,
-            'grant_types' => $grantTypes,
-            'post_logout_redirect_uris' => $postLogoutRedirectUris,
-            'backchannel_logout_uri' => $backChannelLogoutUri,
-            'backchannel_logout_session_required' => filter_var($metadata['backchannel_logout_session_required'] ?? false, FILTER_VALIDATE_BOOLEAN),
-        ])->save();
 
         event(new ClientRegistered(
             clientId: $client->client_id,

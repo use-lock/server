@@ -98,9 +98,9 @@ abstract class FeatureTestCase extends BaseTestCase
     {
         load_migration_paths($this->app, [
             default_migration_path(),
-            dirname(__DIR__).'/workbench/database/migrations',
+            __DIR__.'/../workbench/database/migrations',
             Passkeys::migrationPath(),
-            dirname(__DIR__).'/database/migrations',
+            __DIR__.'/../database/migrations',
         ]);
     }
 }
