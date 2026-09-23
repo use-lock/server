@@ -30,16 +30,6 @@ final class CurrentAccessToken implements \Lock\Server\Shared\Tokens\CurrentAcce
         return array_values($this->token->scopes ?? []);
     }
 
-    /**
-     * The context a directly issued access token was created with; empty for every other grant.
-     *
-     * @return array<string, mixed>
-     */
-    public function context(): array
-    {
-        return $this->token->context ?? [];
-    }
-
     /** The wire client_id, not the primary key. */
     public function clientId(): ?string
     {

@@ -15,9 +15,6 @@ interface CurrentAccessToken
     /** @return list<string> */
     public function scopes(): array;
 
-    /** @return array<string, mixed> */
-    public function context(): array;
-
     public function can(string $scope): bool;
 
     public function revoke(): bool;

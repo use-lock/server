@@ -17,8 +17,6 @@ use Lock\Server\Tokens\Concerns\PrunesSpentRecords;
  * @property string $realm
  * @property ?string $user_id
  * @property string $client_id
- * @property ?string $name
- * @property ?array<string, mixed> $context Host-defined facts a directly issued access token was issued with, e.g. the tenant it is bound to.
  * @property array<int, string> $scopes
  * @property ?array<int, string> $audience The `aud` the token was minted with.
  * @property ?string $auth_code_id The authorization code this token, or the refresh chain it sits in, descends from. Not a foreign key: the chain outlives the code row.
@@ -56,7 +54,6 @@ class AccessToken extends Model
         return [
             'scopes' => 'array',
             'audience' => 'array',
-            'context' => 'array',
             'revoked_at' => 'datetime',
             'expires_at' => 'datetime',
         ];

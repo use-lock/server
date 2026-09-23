@@ -10,7 +10,7 @@ use Throwable;
 
 /**
  * Trigger lists keyed by grant kind: `client_credentials`, `token_exchange`,
- * `direct_access`, or `authorization_code`.
+ * or `authorization_code`.
  */
 class AccessTokenPipeline
 {

@@ -22,8 +22,6 @@ return new class extends Migration
             $table->string('realm');
             $table->foreignUuid('user_id')->nullable()->index();
             $table->foreignUuid('client_id');
-            $table->string('name')->nullable();
-            $table->json('context')->nullable();
             $table->json('scopes')->nullable();
             $table->json('audience')->nullable();
             $table->uuid('auth_code_id')->nullable()->index();
