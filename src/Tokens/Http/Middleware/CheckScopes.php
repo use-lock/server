@@ -33,12 +33,16 @@ class CheckScopes
             throw OAuthServerException::invalidToken();
         }
 
-        foreach ($scopes as $scope) {
-            if (! $user->currentAccessToken()->can($scope)) {
-                throw OAuthServerException::insufficientScope();
-            }
+        if (! $this->satisfies($user->currentAccessToken(), $scopes)) {
+            throw OAuthServerException::insufficientScope();
         }
 
         return $next($request);
+    }
+
+    /** @param  list<string>  $scopes */
+    protected function satisfies(CurrentAccessToken $token, array $scopes): bool
+    {
+        return array_all($scopes, fn (string $scope): bool => $token->can($scope));
     }
 }
