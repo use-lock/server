@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Lock\Server\Clients\ClientRepository;
+use Lock\Server\Shared\Clients\TokenEndpointAuthMethod;
+use Workbench\App\Models\User;
 
 it('assigns the realm default and optional scopes to a new client', function (): void {
     config(['oidc.clients.default_scopes' => ['openid'], 'oidc.clients.optional_scopes' => ['email']]);
@@ -39,3 +41,42 @@ it('honours a resource-qualified scope assignment only for that resource', funct
         ->and($client->snapshot()->allowsScope('anything', ['https://api.internal/billing']))->toBeTrue()
         ->and($client->snapshot()->allowsScope('anything', ['https://api.internal/orders']))->toBeFalse();
 });
+
+it('provisions a machine client whose fixed credentials, scopes and audiences the token endpoint honours', function (): void {
+    $orders = 'https://api.internal/orders';
+    config(['oidc.resources' => [$orders => ['scopes' => ['orders:read', 'orders:write']]]]);
+
+    app(ClientRepository::class)->create(
+        name: 'ERP sync',
+        grantTypes: ['client_credentials'],
+        clientId: 'erp-sync',
+        secret: 'provisioned-secret',
+        defaultScopes: ['orders:read'],
+        optionalScopes: [],
+        allowedAudiences: [$orders],
+    );
+
+    $credentials = ['grant_type' => 'client_credentials', 'client_id' => 'erp-sync', 'client_secret' => 'provisioned-secret', 'resource' => $orders];
+
+    $this->post('/oauth/token', $credentials)->assertOk()->assertJsonPath('scope', 'orders:read');
+    $this->post('/oauth/token', [...$credentials, 'scope' => 'orders:write'])->assertStatus(400)->assertJsonPath('error', 'invalid_scope');
+    $this->post('/oauth/token', [...$credentials, 'resource' => 'https://api.internal/billing'])->assertStatus(400)->assertJsonPath('error', 'invalid_target');
+});
+
+it('records the owner of a client as a polymorphic relation', function (): void {
+    $user = User::create(['name' => 'Owner', 'email' => 'owner@example.com', 'password' => 'x']);
+
+    $client = app(ClientRepository::class)->create('Owned', ['client_credentials'], owner: $user);
+
+    expect($client->fresh()?->owner?->is($user))->toBeTrue();
+});
+
+it('refuses a secret for a public client', function (): void {
+    app(ClientRepository::class)->create(
+        name: 'SPA',
+        grantTypes: ['authorization_code'],
+        redirectUris: ['https://spa.test/callback'],
+        authMethod: TokenEndpointAuthMethod::None,
+        secret: 'not-allowed',
+    );
+})->throws(InvalidArgumentException::class, 'A public client cannot have a secret.');

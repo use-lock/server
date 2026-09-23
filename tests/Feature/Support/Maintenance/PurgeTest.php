@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Lock\Server\Brokering\Models\SocialAccount;
@@ -31,7 +32,7 @@ function purgeTestUser(string $name): User
 
 function purgeTestClient(?User $owner = null): Client
 {
-    return app(ClientRepository::class)->createAuthorizationCodeGrantClient('RP', ['https://rp.test/cb'], user: $owner);
+    return app(ClientRepository::class)->createAuthorizationCodeGrantClient('RP', ['https://rp.test/cb'], owner: $owner);
 }
 
 function seedHoldings(User $user, Client $client): void
@@ -101,6 +102,24 @@ it('purges the clients a user registered, with what they issued to others', func
     expect(Client::query()->pluck('id')->all())->toBe([$clientSheUses->id])
         ->and(AccessToken::query()->where('client_id', $adasApp->id)->exists())->toBeFalse();
 });
+
+it('purges the clients a user registered under a morph alias', function (): void {
+    Relation::morphMap(['user' => User::class]);
+    $ada = purgeTestUser('ada');
+    purgeTestClient(owner: $ada);
+
+    event(new readonly class($ada) implements UserDeleting
+    {
+        public function __construct(private Authenticatable $subject) {}
+
+        public function user(): Authenticatable
+        {
+            return $this->subject;
+        }
+    });
+
+    expect(Client::query()->exists())->toBeFalse();
+})->after(fn (): array => Relation::$morphMap = []);
 
 it('purges a client with everything issued to it, and nothing of another client', function (): void {
     $user = purgeTestUser('ada');
