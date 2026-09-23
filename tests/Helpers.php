@@ -90,7 +90,7 @@ function createUsersFromSocialUsing(Closure $action): void
  */
 function reloadOidcRoutes(): void
 {
-    require dirname(__DIR__).'/routes/oidc.php';
+    require __DIR__.'/../routes/oidc.php';
 
     Route::getRoutes()->refreshNameLookups();
 }

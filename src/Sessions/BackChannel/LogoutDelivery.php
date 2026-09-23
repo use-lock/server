@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Lock\Server\Sessions\BackChannel;
 
-use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Lock\Server\Sessions\Models\OidcSession;
 use Lock\Server\Shared\Clients\Client;
 
@@ -15,7 +15,7 @@ final readonly class LogoutDelivery
         public string $userId,
         public string $clientId,
         public ?string $uri,
-        public ?CarbonImmutable $retryUntil,
+        public ?CarbonInterface $retryUntil,
     ) {}
 
     public static function from(OidcSession $session, Client $client): self
