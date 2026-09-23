@@ -53,7 +53,13 @@ class ConfiguredScopeRepository implements ScopeRepository
             return $scope;
         }
 
-        foreach ($this->definitions($audiences) as $template => $description) {
+        $definitions = $this->definitions($audiences);
+
+        if (isset($definitions[$identifier]) && ScopeTemplate::isTemplate($identifier)) {
+            return new Scope($identifier, $definitions[$identifier], template: $identifier);
+        }
+
+        foreach ($definitions as $template => $description) {
             $value = ScopeTemplate::match($template, $identifier);
 
             if ($value !== null) {
@@ -108,6 +114,7 @@ class ConfiguredScopeRepository implements ScopeRepository
         return array_values(array_filter(
             $requested,
             fn (Scope $scope): bool => $this->find($scope->id, $audiences) instanceof Scope
+                && ! $scope->isOpen()
                 && ($scope->template === null || $this->parameters->allows($scope, $grantType, $client, $userIdentifier, $audiences)),
         ));
     }

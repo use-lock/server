@@ -37,4 +37,25 @@ final class AuthorizeRequest
         public readonly array $resources = [],
         public ?string $userId = null,
     ) {}
+
+    /** @param  list<string>  $scopes */
+    public function withScopes(array $scopes): self
+    {
+        return new self(
+            $this->clientId,
+            $this->redirectUri,
+            $this->redirectUriRequested,
+            $scopes,
+            $this->state,
+            $this->codeChallenge,
+            $this->codeChallengeMethod,
+            $this->nonce,
+            $this->prompt,
+            $this->maxAge,
+            $this->acrValues,
+            $this->idTokenHintSubject,
+            $this->resources,
+            $this->userId,
+        );
+    }
 }
