@@ -27,13 +27,12 @@ it('provisions the first-party client and writes both env halves', function (): 
     expect($contents)
         ->toContain('OIDC_FIRST_PARTY_CLIENT='.$clientId)
         ->toContain('OIDC_FIRST_PARTY_TRUSTED=true')
-        ->toContain('OIDC_RP_ENABLED=true')
-        ->toContain("OIDC_RP_ISSUER=https://app.test\n")
-        ->toContain('OIDC_RP_CLIENT_ID='.$clientId)
-        ->toContain('OIDC_RP_REDIRECT_URI=https://app.test/login/callback')
-        ->toContain('OIDC_RP_POST_LOGOUT_REDIRECT_URI=https://app.test')
+        ->toContain('OIDC_ENABLED=true')
+        ->toContain('OIDC_CLIENT_ID='.$clientId)
+        ->toContain('OIDC_REDIRECT_URI=https://app.test/login/callback')
+        ->toContain('OIDC_POST_LOGOUT_REDIRECT_URI=https://app.test')
         ->toContain('OIDC_ISSUER=https://app.test')
-        ->and(preg_match('/^OIDC_RP_CLIENT_SECRET=.+$/m', $contents))->toBe(1);
+        ->and(preg_match('/^OIDC_CLIENT_SECRET=.+$/m', $contents))->toBe(1);
 });
 
 it('forwards configured provisioning options to the first-party client', function (): void {
@@ -67,7 +66,7 @@ it('adopts the existing client on a second run instead of minting a new one', fu
     $this->artisan('oidc:install-self', ['--force' => true])->assertSuccessful();
 
     $firstContents = (string) File::get($env);
-    preg_match('/^OIDC_RP_CLIENT_SECRET=(.+)$/m', $firstContents, $secret);
+    preg_match('/^OIDC_CLIENT_SECRET=(.+)$/m', $firstContents, $secret);
     preg_match('/^OIDC_FIRST_PARTY_CLIENT=(.+)$/m', $firstContents, $clientId);
 
     $this->artisan('oidc:install-self', ['--force' => true])->assertSuccessful();
@@ -76,7 +75,7 @@ it('adopts the existing client on a second run instead of minting a new one', fu
 
     expect(Client::query()->count())->toBe(1)
         ->and($secondContents)->toContain('OIDC_FIRST_PARTY_CLIENT='.$clientId[1])
-        ->and($secondContents)->toContain('OIDC_RP_CLIENT_SECRET='.$secret[1]);
+        ->and($secondContents)->toContain('OIDC_CLIENT_SECRET='.$secret[1]);
 });
 
 it('rotates the client secret when run again with --fresh', function (): void {
@@ -85,13 +84,13 @@ it('rotates the client secret when run again with --fresh', function (): void {
 
     $this->artisan('oidc:install-self', ['--force' => true])->assertSuccessful();
 
-    preg_match('/^OIDC_RP_CLIENT_SECRET=(.+)$/m', (string) File::get($env), $secret);
+    preg_match('/^OIDC_CLIENT_SECRET=(.+)$/m', (string) File::get($env), $secret);
     $clientId = (string) Client::query()->firstOrFail()->getKey();
 
     $this->artisan('oidc:install-self', ['--force' => true, '--fresh' => true])->assertSuccessful();
 
     $contents = (string) File::get($env);
-    preg_match('/^OIDC_RP_CLIENT_SECRET=(.+)$/m', $contents, $rotated);
+    preg_match('/^OIDC_CLIENT_SECRET=(.+)$/m', $contents, $rotated);
 
     expect(Client::query()->count())->toBe(1)
         ->and($contents)->toContain('OIDC_FIRST_PARTY_CLIENT='.$clientId)
@@ -106,8 +105,8 @@ it('fails instead of rotating when the configured secret no longer matches', fun
     $storedSecret = Client::query()->sole()->getRawOriginal('secret');
 
     File::put($env, (string) preg_replace(
-        '/^OIDC_RP_CLIENT_SECRET=.+$/m',
-        'OIDC_RP_CLIENT_SECRET=tampered',
+        '/^OIDC_CLIENT_SECRET=.+$/m',
+        'OIDC_CLIENT_SECRET=tampered',
         (string) File::get($env),
     ));
 
