@@ -33,7 +33,7 @@ class InstallSelfCommand extends Command
     public function handle(): int
     {
         if (! is_array(config('oidc-client'))) {
-            $this->error('The relying-party package is not installed. Run `composer require use-lock/auth-client` first.');
+            $this->error('The relying-party package is not installed. Run `composer require use-lock/client-laravel` first.');
 
             return self::FAILURE;
         }
@@ -50,8 +50,6 @@ class InstallSelfCommand extends Command
         $name = is_string($nameOption) && $nameOption !== '' ? $nameOption : $this->defaultClientName();
         $redirectUri = $appUrl.'/login/callback';
 
-        $configuredIssuer = config('oidc.issuer');
-        $hasIssuer = is_string($configuredIssuer) && $configuredIssuer !== '';
         $issuer = $this->issuers->url();
 
         if (! $this->option('force')
@@ -73,7 +71,7 @@ class InstallSelfCommand extends Command
                 allowedExchangeAudiences: $this->configuredProvisionList('allowed_exchange_audiences'),
                 adoptClientId: $adoptClientId,
                 rotateSecret: $fresh,
-                existingClientSecret: $fresh ? null : $this->environment->value('OIDC_RP_CLIENT_SECRET'),
+                existingClientSecret: $fresh ? null : $this->environment->value('OIDC_CLIENT_SECRET'),
             );
         } catch (FirstPartyClientProvisioningException $exception) {
             $this->error($exception->getMessage());
@@ -81,22 +79,20 @@ class InstallSelfCommand extends Command
             return self::FAILURE;
         }
 
+        // The provider and the client read the same OIDC_ISSUER: for self-SSO
+        // the client's realm is this app's own.
         $variables = [
+            'OIDC_ISSUER' => $issuer,
             'OIDC_FIRST_PARTY_CLIENT' => $result->client->clientId,
             'OIDC_FIRST_PARTY_TRUSTED' => 'true',
-            'OIDC_RP_ENABLED' => 'true',
-            'OIDC_RP_ISSUER' => $issuer,
-            'OIDC_RP_CLIENT_ID' => $result->client->clientId,
-            'OIDC_RP_REDIRECT_URI' => $redirectUri,
-            'OIDC_RP_POST_LOGOUT_REDIRECT_URI' => $appUrl,
+            'OIDC_ENABLED' => 'true',
+            'OIDC_CLIENT_ID' => $result->client->clientId,
+            'OIDC_REDIRECT_URI' => $redirectUri,
+            'OIDC_POST_LOGOUT_REDIRECT_URI' => $appUrl,
         ];
 
         if ($result->clientSecret !== null) {
-            $variables['OIDC_RP_CLIENT_SECRET'] = $result->clientSecret;
-        }
-
-        if (! $hasIssuer) {
-            $variables['OIDC_ISSUER'] = $appUrl;
+            $variables['OIDC_CLIENT_SECRET'] = $result->clientSecret;
         }
 
         try {

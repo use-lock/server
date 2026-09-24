@@ -29,7 +29,7 @@ it('creates and prints first-party credentials without changing env', function (
         '--no-interaction' => true,
     ]);
     $output = trim(Artisan::output());
-    preg_match('/^OIDC_RP_CLIENT_SECRET=(.+)$/m', $output, $secretMatch);
+    preg_match('/^OIDC_CLIENT_SECRET=(.+)$/m', $output, $secretMatch);
     $client = Client::query()->where('provisioning_key', 'first-party')->firstOrFail();
     $clientId = (string) $client->getKey();
     $plainSecret = $secretMatch[1] ?? null;
@@ -39,8 +39,8 @@ it('creates and prints first-party credentials without changing env', function (
         ->and($output)->toBe(implode(PHP_EOL, [
             'OIDC_FIRST_PARTY_CLIENT='.$clientId,
             'OIDC_FIRST_PARTY_TRUSTED=false',
-            'OIDC_RP_CLIENT_ID='.$clientId,
-            'OIDC_RP_CLIENT_SECRET='.$plainSecret,
+            'OIDC_CLIENT_ID='.$clientId,
+            'OIDC_CLIENT_SECRET='.$plainSecret,
         ]))
         ->and($client->secret)->toBe($plainSecret)
         ->and($client->getAttribute('redirect_uris'))->toBe([
@@ -71,7 +71,7 @@ it('reconciles without printing a secret and writes selected config explicitly',
 
     $this->artisan('oidc:client', $arguments)->assertSuccessful();
     $this->artisan('oidc:client', $arguments)
-        ->doesntExpectOutputToContain('OIDC_RP_CLIENT_SECRET=')
+        ->doesntExpectOutputToContain('OIDC_CLIENT_SECRET=')
         ->assertSuccessful();
 
     expect(File::get($env))->toContain('OIDC_FIRST_PARTY_CLIENT=')
@@ -106,7 +106,7 @@ it('adopts an eligible client without printing its stored hash', function (): vo
         '--adopt' => (string) $client->getKey(),
         '--no-interaction' => true,
     ])->doesntExpectOutputToContain($hash)
-        ->doesntExpectOutputToContain('OIDC_RP_CLIENT_SECRET=')
+        ->doesntExpectOutputToContain('OIDC_CLIENT_SECRET=')
         ->assertSuccessful();
 
     expect(File::get($env))->toBe("APP_NAME=Testing\n")
@@ -138,10 +138,10 @@ it('requires explicit rotation before printing a replacement secret', function (
 
     $this->artisan('oidc:client', $base)->assertSuccessful();
     $this->artisan('oidc:client', $base)
-        ->doesntExpectOutputToContain('OIDC_RP_CLIENT_SECRET=')
+        ->doesntExpectOutputToContain('OIDC_CLIENT_SECRET=')
         ->assertSuccessful();
     $this->artisan('oidc:client', [...$base, '--rotate' => true])
-        ->expectsOutputToContain('OIDC_RP_CLIENT_SECRET=')
+        ->expectsOutputToContain('OIDC_CLIENT_SECRET=')
         ->assertSuccessful();
 });
 

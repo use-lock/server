@@ -89,8 +89,8 @@ class ProvisionClientCommand extends Command
         $this->line('OIDC_FIRST_PARTY_TRUSTED='.($trusted ? 'true' : 'false'));
 
         if ($result->clientSecret !== null) {
-            $this->line('OIDC_RP_CLIENT_ID='.$result->client->clientId);
-            $this->line('OIDC_RP_CLIENT_SECRET='.$result->clientSecret);
+            $this->line('OIDC_CLIENT_ID='.$result->client->clientId);
+            $this->line('OIDC_CLIENT_SECRET='.$result->clientSecret);
         }
 
         if (! $this->option('write-env')) {
