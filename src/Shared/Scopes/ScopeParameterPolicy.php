@@ -15,4 +15,13 @@ interface ScopeParameterPolicy
 {
     /** @param  list<string>  $audiences */
     public function allows(Scope $scope, string $grantType, ?Client $client, ?string $userIdentifier, array $audiences): bool;
+
+    /**
+     * The values the consent screen offers for an open template, keyed by
+     * value with a label for the user to pick from.
+     *
+     * @param  list<string>  $audiences
+     * @return array<string, string>
+     */
+    public function options(Scope $template, ?Client $client, ?string $userIdentifier, array $audiences): array;
 }

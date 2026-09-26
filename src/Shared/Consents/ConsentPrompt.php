@@ -11,6 +11,15 @@ use Lock\Server\Shared\Scopes\Scope;
 final readonly class ConsentPrompt
 {
     /**
+     * The approve form field carrying the value chosen for the nth open
+     * template, counted in the order the request names them.
+     */
+    public static function parameterField(int $position): string
+    {
+        return 'scope_parameter_'.$position;
+    }
+
+    /**
      * @param  array<int, Scope>  $scopes
      * @param  list<string>  $resources  the resource identifiers the scopes are asked for; the realm's own issuer
      *                                   when the client named none. A scope means what the resource declaring it

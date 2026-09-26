@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Lock\Server\Protocol\Events\ConsentDenied;
 use Lock\Server\Shared\Clients\Client;
 use Lock\Server\Shared\Clients\Clients;
+use Lock\Server\Shared\Consents\ConsentPrompt;
 use Lock\Server\Shared\Consents\ConsentStore;
 use Lock\Server\Shared\Protocol\AuthorizeRequest;
 use Lock\Server\Shared\Protocol\OAuthServerException;
@@ -59,7 +60,8 @@ readonly class CompleteAuthorization
      * requested. A posted `scopes` selection keeps the requested scopes the
      * user left checked and fills each open template with the chosen values;
      * hidden scopes were never shown, so they stay. Without a selection every
-     * requested scope stays and open templates lapse. Either way the result is
+     * requested scope stays. An open template is also filled with the value
+     * picked in its consent field and lapses when there is none. Either way the result is
      * finalized as for the token, so no consent is stored for a value the
      * user may not have.
      *
@@ -71,13 +73,19 @@ readonly class CompleteAuthorization
         $selection = $request->input('scopes');
         $selected = is_array($selection) ? array_values(array_filter($selection, is_string(...))) : null;
         $approved = [];
+        $openTemplates = 0;
 
         foreach ($authorization->scopes as $id) {
             $scope = $this->scopes->find($id, $resources);
 
             if ($scope instanceof Scope && $scope->isOpen()) {
                 $template = (string) $scope->template;
+                $chosen = $scope->hidden ? null : $request->input(ConsentPrompt::parameterField($openTemplates++));
                 array_push($approved, ...array_filter($selected ?? [], fn (string $value): bool => ScopeTemplate::match($template, $value) !== null));
+
+                if (is_string($chosen) && $chosen !== '') {
+                    $approved[] = ScopeTemplate::fill($template, $chosen);
+                }
             } elseif ($selected === null || ($scope instanceof Scope && $scope->hidden) || in_array($id, $selected, true)) {
                 $approved[] = $id;
             }

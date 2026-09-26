@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Lattice\Form\Components\Form;
 use Lattice\Form\Components\HiddenInput;
+use Lattice\Form\Components\Select;
 use Lattice\Ui\Components\Button;
 use Lattice\Ui\Components\Component;
 use Lattice\Ui\Components\Heading;
@@ -19,6 +20,7 @@ use Lattice\Ui\PageSchema;
 use Lock\Server\Shared\Consents\ConsentPrompt;
 use Lock\Server\Shared\Consents\ConsentView;
 use Lock\Server\Shared\Scopes\Scope;
+use Lock\Server\Shared\Scopes\ScopeParameterPolicy;
 use Lock\Server\Shared\Ui\Pages\AuthPage;
 use LogicException;
 use Symfony\Component\HttpFoundation\Response;
@@ -64,6 +66,7 @@ class OAuthConsentPage extends AuthPage implements ConsentView
                         ->withoutSubmitButton()
                         ->schema([
                             HiddenInput::make('auth_token')->value($prompt->authToken),
+                            ...$this->parameterFields($prompt),
                             ...$this->approveFields($prompt),
                             Button::make(__('oidc-ui::oauth.consent.approve'))->submit(),
                         ]),
@@ -88,6 +91,34 @@ class OAuthConsentPage extends AuthPage implements ConsentView
     protected function approveFields(ConsentPrompt $prompt): array
     {
         return [];
+    }
+
+    /**
+     * One picker per open template, offering the values the parameter policy
+     * lets this user choose. A template without any value to offer gets no
+     * picker and lapses on approval.
+     *
+     * @return list<Select>
+     */
+    private function parameterFields(ConsentPrompt $prompt): array
+    {
+        $policy = app(ScopeParameterPolicy::class);
+        $userIdentifier = (string) $prompt->user->getAuthIdentifier();
+        $open = array_values(array_filter($prompt->scopes, fn (Scope $scope): bool => $scope->isOpen()));
+        $fields = [];
+
+        foreach ($open as $position => $template) {
+            $options = $policy->options($template, $prompt->client, $userIdentifier, $prompt->resources);
+
+            if ($options !== []) {
+                $fields[] = Select::make(ConsentPrompt::parameterField($position), $template->description)
+                    ->options($options)
+                    ->value(array_key_first($options))
+                    ->required();
+            }
+        }
+
+        return $fields;
     }
 
     /**
