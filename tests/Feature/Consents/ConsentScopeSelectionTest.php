@@ -12,6 +12,7 @@ use Illuminate\Testing\TestResponse;
 use Lock\Server\Clients\ClientRepository;
 use Lock\Server\Consents\ConsentRepository;
 use Lock\Server\Shared\Clients\Client;
+use Lock\Server\Shared\Consents\ConsentPrompt;
 use Lock\Server\Shared\Scopes\Scope;
 use Lock\Server\Shared\Scopes\ScopeParameterPolicy;
 use Lock\Server\Support\Testing\InteractsWithOidc;
@@ -30,6 +31,11 @@ beforeEach(function (): void {
         public function allows(Scope $scope, string $grantType, ?Client $client, ?string $userIdentifier, array $audiences): bool
         {
             return $scope->parameter === 'acme';
+        }
+
+        public function options(Scope $template, ?Client $client, ?string $userIdentifier, array $audiences): array
+        {
+            return ['acme' => 'Acme'];
         }
     });
     fakeConsentViewUsing(fn (array $parameters) => response()->json([
@@ -112,4 +118,20 @@ it('lets an open template lapse when the approval selects nothing', function ():
 
 it('never offers a concrete value the parameter policy refuses', function (): void {
     expect(requestConsent($this, 'openid organization:globex')->assertOk()->json('scopes'))->toBe(['openid']);
+});
+
+it('fills an open template with the value picked in its consent field', function (): void {
+    $authToken = requestConsent($this, 'openid organization:{organization}')->json('authToken');
+
+    $this->post(route('oidc.approve'), ['auth_token' => $authToken, ConsentPrompt::parameterField(0) => 'acme'])->assertRedirect();
+
+    expect(consentedScopes($this))->toBe(['openid', 'organization:acme']);
+});
+
+it('drops a picked value the parameter policy refuses', function (): void {
+    $authToken = requestConsent($this, 'openid organization:{organization}')->json('authToken');
+
+    $this->post(route('oidc.approve'), ['auth_token' => $authToken, ConsentPrompt::parameterField(0) => 'globex'])->assertRedirect();
+
+    expect(consentedScopes($this))->toBe(['openid']);
 });

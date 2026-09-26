@@ -7,6 +7,7 @@ namespace Lock\Server\Scopes;
 use Illuminate\Support\ServiceProvider;
 use Lock\Server\Scopes\Claims\StandardClaimsResolver;
 use Lock\Server\Shared\Scopes\ClaimsResolver;
+use Lock\Server\Shared\Scopes\ScopeGrantFilter;
 use Lock\Server\Shared\Scopes\ScopeParameterPolicy;
 use Lock\Server\Shared\Scopes\ScopeRepository;
 
@@ -17,5 +18,6 @@ class ScopesServiceProvider extends ServiceProvider
         $this->app->singleton(ScopeRepository::class, ConfiguredScopeRepository::class);
         $this->app->singleton(ClaimsResolver::class, StandardClaimsResolver::class);
         $this->app->singleton(ScopeParameterPolicy::class, AssignedScopeParameterPolicy::class);
+        $this->app->singleton(ScopeGrantFilter::class, UnfilteredScopeGrant::class);
     }
 }
