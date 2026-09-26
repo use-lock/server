@@ -11,6 +11,7 @@ use Lock\Server\Shared\Realms\RealmAudiences;
 use Lock\Server\Shared\Realms\RealmResolver;
 use Lock\Server\Shared\Scopes\Scope;
 use Lock\Server\Shared\Scopes\ScopeCatalog;
+use Lock\Server\Shared\Scopes\ScopeGrantFilter;
 use Lock\Server\Shared\Scopes\ScopeParameterPolicy;
 use Lock\Server\Shared\Scopes\ScopeRepository;
 use Lock\Server\Shared\Scopes\ScopeTemplate;
@@ -34,6 +35,7 @@ class ConfiguredScopeRepository implements ScopeRepository
         private readonly RealmResolver $realms,
         private readonly RealmAudiences $audiences,
         private readonly ScopeParameterPolicy $parameters = new AssignedScopeParameterPolicy,
+        private readonly ScopeGrantFilter $filter = new UnfilteredScopeGrant,
     ) {}
 
     /** Parameterized templates are left out: only the scopes they expand to exist. */
@@ -111,12 +113,19 @@ class ConfiguredScopeRepository implements ScopeRepository
      */
     public function finalize(array $requested, string $grantType, ?Client $client, ?string $userIdentifier = null, array $audiences = []): array
     {
-        return array_values(array_filter(
+        $allowed = array_values(array_filter(
             $requested,
             fn (Scope $scope): bool => $this->find($scope->id, $audiences) instanceof Scope
                 && ! $scope->isOpen()
                 && ($scope->template === null || $this->parameters->allows($scope, $grantType, $client, $userIdentifier, $audiences)),
         ));
+
+        $kept = array_map(
+            fn (Scope $scope): string => $scope->id,
+            $this->filter->filter($allowed, $grantType, $client, $userIdentifier, $audiences),
+        );
+
+        return array_values(array_filter($allowed, fn (Scope $scope): bool => in_array($scope->id, $kept, true)));
     }
 
     /**
