@@ -10,8 +10,7 @@ before a fix and disclosure have been coordinated.
 
 ## Supported Versions
 
-Before the first tagged release, security fixes target `main`. After release, only the latest
-published release receives security fixes. Reports about any version are welcome; include
+Only the latest published release receives security fixes. Reports about any version are welcome; include
 whether the issue also affects the latest release if you can verify it. Older releases do not
 receive backported fixes.
 
