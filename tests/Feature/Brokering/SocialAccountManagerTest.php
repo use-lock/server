@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,13 +32,7 @@ function socialUser(array $overrides = []): SocialUser
 
 function userProvider(): UserProvider
 {
-    $guard = Auth::guard('identity');
-
-    if (! $guard instanceof SessionGuard) {
-        throw new RuntimeException('Expected the identity guard to be a session guard.');
-    }
-
-    return $guard->getProvider();
+    return Auth::guard('identity')->getProvider();
 }
 
 it('resolves an already linked account, refreshes its tokens and keeps them encrypted at rest', function (): void {
