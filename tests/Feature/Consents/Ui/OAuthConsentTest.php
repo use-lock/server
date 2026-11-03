@@ -66,3 +66,12 @@ it('lists only the visible scopes and drops the scopes heading when none are vis
         ->and($mixed)->not->toContain('Internal metrics access')
         ->and($hiddenOnly)->not->toContain(__('oidc-ui::oauth.consent.requested-scopes'));
 });
+
+it('offers approving as the one primary action and denying as a secondary one', function (): void {
+    $client = $this->createOidcClient('Test RP', ['https://rp.test/callback']);
+
+    $content = renderPage(new OAuthConsentPage(consentPrompt($client, [new Scope('openid', 'OpenID Connect')])));
+
+    expect(substr_count($content, '"variant":"secondary"'))->toBe(1)
+        ->and(strpos($content, '"variant":"secondary"'))->toBeGreaterThan((int) strpos($content, 'oauth-consent-deny'));
+});
