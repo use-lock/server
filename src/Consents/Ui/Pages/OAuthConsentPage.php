@@ -15,6 +15,7 @@ use Lattice\Ui\Components\Stack;
 use Lattice\Ui\Components\Text;
 use Lattice\Ui\Enums\Gap;
 use Lattice\Ui\Enums\HttpMethod;
+use Lattice\Ui\Enums\Variant;
 use Lattice\Ui\PageSchema;
 use Lock\Server\Shared\Consents\ConsentPrompt;
 use Lock\Server\Shared\Consents\ConsentView;
@@ -73,7 +74,7 @@ class OAuthConsentPage extends AuthPage implements ConsentView
                         ->withoutSubmitButton()
                         ->schema([
                             HiddenInput::make('auth_token')->value($prompt->authToken),
-                            Button::make(__('oidc-ui::oauth.consent.deny'))->submit(),
+                            Button::make(__('oidc-ui::oauth.consent.deny'))->variant(Variant::Secondary)->submit(),
                         ]),
                 ]),
         ]);
