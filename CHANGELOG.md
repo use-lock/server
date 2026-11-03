@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.1](https://github.com/use-lock/server/compare/0.3.0...0.3.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* offer denying consent as a secondary action ([#15](https://github.com/use-lock/server/issues/15)) ([8ce32d0](https://github.com/use-lock/server/commit/8ce32d01373cc15194ba04eaafc8fdf172eeaf49))
+* write the client-laravel env names during self-SSO setup ([e14bb15](https://github.com/use-lock/server/commit/e14bb15454a15d8ed7d1772fedc2a6b1ae95b098))
+
+
+### Documentation
+
+* drop the pre-release note from the security policy ([#14](https://github.com/use-lock/server/issues/14)) ([596572f](https://github.com/use-lock/server/commit/596572faaf3b512f6baffd64269ab9d68baeff45))
+
 ## [0.3.0](https://github.com/use-lock/server/compare/0.2.0...0.3.0) (2026-09-23)
 
 
